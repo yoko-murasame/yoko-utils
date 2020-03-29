@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>十进制等比计算工具</title>
+    <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
+    <script src="https://cdn.bootcss.com/twitter-bootstrap/4.4.1/js/bootstrap.min.js"></script>
+    <link href="https://cdn.bootcss.com/twitter-bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        .center-center {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-top: 20px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .three-part {
+            display: flex;
+            justify-content: space-between;
+            width: 25%;
+        }
+
+        .half {
+            width: 50%;
+        }
+
+        .two-part {
+            display: flex;
+            justify-content: space-between;
+            width: 45%;
+        }
+
+        .calculate-part {
+            justify-content: space-between;
+        }
+
+        .toggle {
+            flex-direction: row-reverse;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container center-center">
+        <div class="config">
+            <h3 class="text-center">自定义转换模板</h3>
+            <p class="text-center">1 新增配置，默认内置了贞秒转换，可自定义和添加，注意Chrome浏览器由于本地页面无法操作cookie因此无法保存新增配置！换其他浏览器运行即可。</p>
+
+            <div class="input-group mb-3 calculate-part">
+                <span class="three-part">
+                    <input type="text" placeholder="24" class="form-control half">
+                    <input type="text" placeholder="帧" value="帧" class="input-group-text half">
+                </span>
+                <span class="btn">=</span>
+                <span class="three-part">
+                    <input type="text" placeholder="1" value="1" class="form-control half">
+                    <input type="text" placeholder="秒" value="秒" class="input-group-text half">
+                </span>
+                <span class="btn">起名：</span>
+                <span class="three-part">
+                    <input type="text" placeholder="24帧秒" value="24帧秒" class="form-control half">
+                    <button onclick="addTemplate()" class="btn btn-success half" type="button">新增</button>
+                </span>
+            </div>
+
+            <p class="text-center">2 请在下拉框中选择对应模板，然后点击应用按钮。</p>
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <button id="id-btn-applyTemplate" class="btn btn-primary" type="button">应用</button>
+                </div>
+                <select class="custom-select" id="id-applyTemplate" aria-label="Example select with button addon">
+                    <option selected>选择一个模板，如没有请手动添加...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="translator">
+            <h3 class="text-center">计算区域</h3>
+            <p class="text-center">3 在左侧输入需要计算的值，点击页面空白处，右侧将自动展示计算结果；点击等号可将两侧互换。</p>
+            <div class="input-group mb-3 calculate-part">
+                <span class="two-part">
+                    <input type="text" id="id-left-num" class="form-control half">
+                    <input type="text" id="id-left-desc" class="input-group-text half">
+                </span>
+                <button class="btn btn-info" id="id-btn-toggle">=</button>
+                <span class="two-part">
+                    <input type="text" id="id-right-num" class="form-control half">
+                    <input type="text" id="id-right-desc" class="input-group-text half">
+                </span>
+            </div>
+
+        </div>
+
+        <div class="text-center" style="padding-top: 20px;">
+            Author by Yoko on 2020.03.29，<a target="_blank" href="https://github.com/yoko-murasame/yoko-utils">Github</a>，请勿用于商业用途！
+        </div>
+    </div>
+
+</body>
+
+<script>
+    let templates = { "24帧秒": [ 24, '帧', 1, '秒'] };
+    $(function () {
+        //1.从cookie获取templateList
+        console.log($.cookie('templates'))
+        if (undefined !== $.cookie('templates') && null !== $.cookie('templates')) {
+            templates = JSON.parse($.cookie('templates'));
+        }
+        //2.应用templateList
+        applyTemplateOptions();
+        //3.监听应用按钮
+        $("#id-btn-applyTemplate").on('click', function () {
+            const key = $("#id-applyTemplate").val();
+            console.log(key)
+            const currTemplate = templates[key];
+            applyTemplate(currTemplate);
+            //4.监听改变与同步
+            synchronizeData("#id-left-num", "#id-right-num", currTemplate[0], currTemplate[2],currTemplate[3],currTemplate[1]);
+            synchronizeData("#id-right-num", "#id-left-num", currTemplate[2], currTemplate[0],currTemplate[1],currTemplate[3]);
+        });
+        //5.添加左右倒转开关
+        $("#id-btn-toggle").on('click', function () {
+            $(this).parent().toggleClass("toggle");
+        });
+        //6.监听新增按钮，直接在html绑定
+
+    });
+
+    //下拉选项框渲染
+    applyTemplateOptions = function () {
+        if ($("#id-applyTemplate").children().length > 0) $("#id-applyTemplate").empty();
+        Object.keys(templates).map(key => {
+            let option = `<option value="${key}">${key}</option>`;
+            $("#id-applyTemplate").append(option);
+        });
+    }
+
+    //处理template到计算区域
+    applyTemplate = function (template) {
+        if (undefined === template || null === template) {
+            alert("应用失败，模板不存在，请重新选择！");
+            return false;
+        }
+        const selectors = ["#id-left-num", "#id-left-desc", "#id-right-num", "#id-right-desc"];
+        settingVal(selectors, template);
+    }
+
+    //JQ动态设置属性
+    settingVal = function (selectors, values) {
+        for (let i = 0; i < selectors.length; i++) {
+            const selector = selectors[i];
+            const value = values[i];
+            $(selector).val(value);
+        }
+    }
+
+    //动态同步两个数据
+    synchronizeData = function (selectorOne, selectorTwo, left, right,unitOne,unitTwo) {
+        $(selectorOne).on('change', function () {
+            let newData = parseFloat(this.value / left * right).toFixed(2);
+            let quotient = parseInt(newData);
+            let remainder = this.value - quotient*left/right;
+            $(selectorTwo).val(`共 ${newData} ${unitOne}（${quotient} ${unitOne}，${remainder} ${unitTwo}）`);
+        })
+    }
+
+    //处理新增模板
+    addTemplate = function () {
+        let array = [];
+        let flag = true;
+        $(".three-part input").each(function (e) {
+            if (undefined === $(this).val() || null === $(this).val() || "" === $(this).val()) flag = false;
+            array.push($(this).val())
+        });
+        if (!flag) {
+            alert("参数错误，请重新填写！");
+            return;
+        }
+        let key = array.pop();
+        //保存到cookie
+        templates[key] = array;
+        // $.cookie('templates', JSON.stringify(templates), {
+        //     expires: 30,
+        //     path: '/',
+        //     domain: '*',
+        //     secure: true
+        // });
+        document.cookie = "templates="+JSON.stringify(templates);
+        //刷新模板应用列表
+        applyTemplateOptions();
+    }
+</script>
+
+</html>
